@@ -1,1 +1,0 @@
-# Class-of-2008-Graduation-Photo
