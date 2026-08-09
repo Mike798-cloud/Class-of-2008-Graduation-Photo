@@ -13,13 +13,14 @@
   const sceneName=$('#sceneName'), sceneTime=$('#sceneTime'), chapterLabel=$('#chapterLabel'), clueCount=$('#clueCount');
   const objective=$('#objective'), ambientText=$('#ambientText'), toastEl=$('#toast'), modalLayer=$('#modalLayer'), modal=$('#modal');
   const backBtn=$('#backBtn'), phoneBtn=$('#phoneBtn');
+  const tabletSceneName=$('#tabletSceneName'), tabletChapter=$('#tabletChapter'), tabletObjective=$('#tabletObjective'), tabletAmbient=$('#tabletAmbient');
 
   const clueDefs = {
-    class_photo:['41人合影','牛皮纸袋里的旧照片并非正式归档版，画面里能数出41名学生。'],
+    class_photo:['异常旧合影','牛皮纸袋里的春季合影中，有一名女生无法与40人的正式毕业名册对应。'],
     chen_absent:['陈嘉树没有进校','门卫值班记录显示今晚没有校友登记入校。'],
     old_map:['2008旧校区地图','地图上还保留着后来拆除的旧实验楼。'],
     room071:['“071”痕迹','307教室墙角和旧物编号里反复出现071。'],
-    extra_desk:['消失的课桌','旧照片与现在的教室对照后，靠窗区域少了一张课桌。'],
+    extra_desk:['消失的课桌','2008年的教室快照与现在对照后，靠窗区域少了一张课桌。'],
     duty_fragment:['值日表残页','残页写着“林□”，说明当年七班确实有一名林姓学生参与值日。'],
     photo_alias:['“阿遥”','摄影社旧照片背后写着“阿遥第一次自己冲照片”。'],
     temp071:['临时编号 TEMP-071','摄影社借用册里071没有正式学号，只标为临时成员。'],
@@ -31,7 +32,7 @@
     final_film:['5月19日未冲洗胶卷','胶卷27/36拍到了事故现场，也证明陈嘉树当时就在旧楼附近。'],
     chen_truth:['陈嘉树的沉默','他承认自己当年配合回收照片、删除墙报里的林遥名字，此后一直后悔。'],
     bookmark:['夹在摄影书里的书签','林遥写道：“我不是失踪了，我只是离开了那里。”'],
-    full_photo:['完整合影边缘','原底片比所谓“毕业照”更宽，最右侧还能看到班主任。它其实是春季班级合影。']
+    full_photo:['完整合影边缘','原始照片边缘还能看到班主任。所谓“毕业照”其实是2008年春季活动合影。']
   };
 
   const itemDefs = {
@@ -45,7 +46,15 @@
   function storageRemove(){try{localStorage.removeItem(SAVE_KEY)}catch(e){}}
   function load(){ try{ const s=JSON.parse(storageGet()); return s&&s.scene?Object.assign(defaultState(),s):defaultState(); }catch(e){return defaultState();} }
   function save(){ state.lastPlayed=Date.now(); storageSet(JSON.stringify(state)); updateHUD(); }
-  function reset(){ storageRemove(); state=defaultState(); location.reload(); }
+  function reset(){
+    storageRemove(); state=defaultState();
+    try{pendingCalls.length=0;}catch(e){}
+    phoneBtn.classList.add('hidden'); phoneBtn.textContent='来电';
+    closeModal(); gameScreen.classList.remove('active'); titleScreen.classList.add('active');
+    sceneImage.src='assets/img/gate.jpg'; sceneName.textContent='旧校门'; sceneTime.textContent='19:43'; chapterLabel.textContent='第一章 · 照片里的人';
+    objective.textContent=''; ambientText.textContent='远处传来拆除工地的金属碰撞声。'; hotspots.innerHTML='';
+    updateHUD();
+  }
   function hasClue(id){return state.clues.includes(id)}
   function hasItem(id){return state.items.includes(id)}
   function addClue(id,silent=false){ if(!clueDefs[id]||hasClue(id))return false; state.clues.push(id); save(); if(!silent) toast('线索已记录：'+clueDefs[id][0]); checkDerived(); return true; }
@@ -67,10 +76,10 @@
   }
 
   const scenes = {
-    gate:{name:'旧校门',time:'19:43',img:'assets/img/gate.jpg',chapter:'第一章 · 41个人',ambient:'老校区明天拆除，今晚是最后一次进入。',objective:()=>hasItem('class_photo')?'拿着307钥匙进入校舍。':'检查门边旧报箱。',spots:[
+    gate:{name:'旧校门',time:'19:43',img:'assets/img/gate.jpg',chapter:'第一章 · 照片里的人',ambient:'老校区明天拆除，今晚是最后一次进入。',objective:()=>hasItem('class_photo')?'拿着307钥匙进入校舍。':'检查门边旧报箱。',spots:[
       [5,51,20,35,'报箱',()=>inspectGateMail()], [33,27,48,58,'校门',()=>go('guard')]
     ]},
-    guard:{name:'门卫室',time:'19:49',img:'assets/img/guard.jpg',chapter:'第一章 · 41个人',ambient:'门卫室空着，桌面上的纸张还没来得及清走。',objective:()=>hasItem('map')?'拿走307备用钥匙，去三楼。':'找一张还能看清的旧校区平面图。',spots:[
+    guard:{name:'门卫室',time:'19:49',img:'assets/img/guard.jpg',chapter:'第一章 · 照片里的人',ambient:'门卫室空着，桌面上的纸张还没来得及清走。',objective:()=>hasItem('map')?'拿走307备用钥匙，去三楼。':'找一张还能看清的旧校区平面图。',spots:[
       [46,58,31,32,'旧地图',()=>inspectMap()], [6,57,32,34,'值班桌',()=>inspectGuardLog()], [4,18,20,31,'钥匙板',()=>takeKey()], [84,18,14,68,'离开',()=>go('hallway')]
     ]},
     hallway:{name:'三楼走廊',time:'20:01',img:()=>state.flags.oldBuildingOpen?'assets/img/hallway_night.jpg':'assets/img/hallway.jpg',chapter:()=>hasClue('linyao')?'第三章 · 她真实存在过':'第二章 · 她坐在哪里',ambient:'日光灯发出很轻的电流声。所有门牌都还在，只是没人再上课。',objective:()=>nextObjective(),spots:[
@@ -78,8 +87,8 @@
       [20,18,20,58,'摄影社',()=>go('photo')], [42,19,16,60,'广播室',()=>go('broadcast')],
       [2,35,18,54,'器材室',()=>go('sports')], [80,18,20,68,'旧实验楼',()=>state.flags.oldBuildingOpen?go('oldbuilding'):toast('封条还没必要动。先弄清5月19日发生了什么。')]
     ]},
-    classroom:{name:'307教室',time:'20:08',img:()=>state.clues.length>7?'assets/img/classroom_late.jpg':'assets/img/classroom.jpg',chapter:'第二章 · 她坐在哪里',ambient:'粉尘味很重。这里不像案发现场，更像一间被时间放弃的普通教室。',objective:()=>hasClue('extra_desk')?'继续寻找071与林姓学生的关系。':'把手里的旧合影和现在的教室对照。',spots:[
-      [15,22,42,32,'黑板',()=>inspectBlackboard()], [20,70,45,25,'课桌',()=>inspectDesks()], [3,5,11,25,'墙角',()=>inspectWall()], [67,25,25,35,'合影拍摄位置',()=>openCompare()]
+    classroom:{name:'307教室',time:'20:08',img:()=>state.clues.length>7?'assets/img/classroom_late.jpg':'assets/img/classroom.jpg',chapter:'第二章 · 她坐在哪里',ambient:'粉尘味很重。这里不像案发现场，更像一间被时间放弃的普通教室。',objective:()=>hasClue('extra_desk')?'继续寻找071与林姓学生的关系。':'找到能与现在教室对应的2008年教室快照。',spots:[
+      [15,22,42,32,'黑板',()=>inspectBlackboard()], [20,70,45,25,'课桌',()=>inspectDesks()], [3,5,11,25,'墙角',()=>inspectWall()], [67,25,25,35,'照片对照位置',()=>openCompare()]
     ]},
     photo:{name:'摄影社旧活动室',time:'20:22',img:'assets/img/photo_club.jpg',chapter:'第三章 · 照片不会忘记',ambient:'器材已经撤走大半，留下的照片夹和登记本比人更诚实。',objective:()=>hasClue('linyao')?'查找2008年5月留下的底片。':'从摄影社记录里确认071是谁。',spots:[
       [4,15,26,75,'旧相册',()=>inspectAlbum()], [33,56,28,34,'借用登记册',()=>inspectLedger()], [70,15,29,77,'暗房入口',()=>go('darkroom')], [50,24,14,20,'旧摄影书',()=>inspectBook()]
@@ -111,7 +120,7 @@
     hotspots.style.left=((sw-w)/2)+'px';hotspots.style.top=((sh-h)/2)+'px';hotspots.style.width=w+'px';hotspots.style.height=h+'px';
   }
   function renderScene(){
-    const s=sceneObj(); sceneImage.onload=layoutHotspots; sceneImage.src=resolve(s.img); sceneName.textContent=s.name; sceneTime.textContent=s.time; chapterLabel.textContent=resolve(s.chapter); ambientText.textContent=s.ambient; objective.textContent=resolve(s.objective);
+    const s=sceneObj(); const ch=resolve(s.chapter), obj=resolve(s.objective); sceneImage.onload=layoutHotspots; sceneImage.src=resolve(s.img); sceneName.textContent=s.name; sceneTime.textContent=s.time; chapterLabel.textContent=ch; ambientText.textContent=s.ambient; objective.textContent=obj; if(tabletSceneName)tabletSceneName.textContent=s.name+' · '+s.time; if(tabletChapter)tabletChapter.textContent=ch; if(tabletObjective)tabletObjective.textContent=obj; if(tabletAmbient)tabletAmbient.textContent=s.ambient;
     hotspots.innerHTML=''; s.spots.forEach(([l,t,w,h,label,act])=>{ const b=document.createElement('button'); b.className='hotspot'; b.style.cssText=`left:${l}%;top:${t}%;width:${w}%;height:${h}%`; b.setAttribute('aria-label',label); b.title=''; b.addEventListener('click',e=>{e.stopPropagation(); act();}); hotspots.appendChild(b); });
     backBtn.disabled=state.history.length===0; updateHUD(); save(); requestAnimationFrame(layoutHotspots);
   }
@@ -128,18 +137,24 @@
   }
 
   function inspectGateMail(){
-    if(hasItem('class_photo')) return openProp('class_photo','牛皮纸袋里的合影');
+    if(hasItem('class_photo')) return openClassPhoto();
     addItem('class_photo'); addClue('class_photo',true); flag('keyHint');
-    openCustom('牛皮纸袋',`<div class="paper"><h3>给校史整理员</h3><p>纸袋里是一张被反复翻看过的旧合影，背面写着：</p><p><b>“40个人。<br>如果你看到41个，<br>今晚不要相信任何人说的话。”</b></p><p>下面还压着一张便签：<b>307备用钥匙在门卫室。</b></p></div><img class="prop-img" src="assets/img/class_photo.jpg" alt="2008年旧合影">`,'wide');
+    openCustom('牛皮纸袋',`<div class="paper"><h3>给校史整理员</h3><p>纸袋里是一张被反复翻看过的旧合影。正式毕业名册只有40人，但照片右后排有一张脸无法对应任何姓名。</p><p>照片背面还有一行已经褪色的铅笔字：<b>“如果你认出她，今晚不要只相信别人说的话。”</b></p><p>下面压着一张便签：<b>307备用钥匙在门卫室。</b></p></div><div class="modal-actions"><button id="viewEnvelopePhoto">查看照片正反面</button></div>`,'narrow');
+    setTimeout(()=>$('#viewEnvelopePhoto')?.addEventListener('click',openClassPhoto),0);
+  }
+  function openClassPhoto(){
+    const back=!!state.flags.photoBack;
+    openCustom('2008年春季合影',`<div class="photo-object"><div class="photo-frame"><img id="classPhotoFace" src="${back?'assets/img/class_photo_back.jpg':'assets/img/class_photo.jpg'}" alt="${back?'旧照片背面':'2008年旧合影'}"></div><div class="photo-side"><p>${back?'背面的铅笔字不是系统提示，而是当年真正写在照片上的内容。':'照片本身没有标出谁是异常者。需要继续寻找姓名、座位和社团记录。'}</p><button id="flipClassPhoto">${back?'翻回正面':'翻到背面'}</button><button id="photoClose">收起照片</button></div></div>`,'wide');
+    setTimeout(()=>{ $('#flipClassPhoto')?.addEventListener('click',()=>{state.flags.photoBack=!back;save();openClassPhoto();}); $('#photoClose')?.addEventListener('click',closeModal); },0);
   }
   function inspectMap(){addItem('map');addClue('old_map');openProp('map','2008旧校区平面图')}
   function inspectGuardLog(){addClue('chen_absent'); openText('值班记录','今天的来访登记只有施工队和两名物业人员。<br><br>没有陈嘉树。<br><br>可刚才电话里，他明明说自己“在307里找到了一样东西”。')}
   function takeKey(){if(state.flags.key)return toast('307备用钥匙已经在你身上。');flag('key');toast('拿到：307教室备用钥匙。')}
-  function inspectBlackboard(){ if(addClue('room071')) openText('黑板角落','被擦过很多次的粉笔灰下，还能隐约看到“071”。它不像座位号，更像某种临时编号。'); else toast('“071”的粉笔痕迹还在。') }
-  function inspectDesks(){ if(!hasClue('extra_desk')) toast('现存课桌并不少，但仅凭现在的数量无法说明问题。最好把旧合影举起来对照。'); else toast('对照照片后，你已经确认靠窗区域少了一张桌子。') }
+  function inspectBlackboard(){ const fresh=addClue('room071'); openCustom('307 · 黑板近景',`<img class="prop-img" src="assets/img/classroom_blackboard.jpg" alt="黑板近景"><div class="paper"><p>${fresh?'被擦过很多次的粉笔灰下，还能隐约看到“071”。它不像座位号，更像某种临时编号。':'“071”的粉笔痕迹仍在同一个位置。'}</p></div>`,'wide'); }
+  function inspectDesks(){ openCustom('307 · 靠窗课桌',`<img class="prop-img" src="assets/img/classroom_desks.jpg" alt="靠窗课桌近景"><div class="paper"><p>${hasClue('extra_desk')?'把2008教室快照与这里对照后，可以确认现在少了一张靠窗课桌。':'单看现在的课桌没有意义。你需要一张与这个视角能够对应的旧教室照片。'}</p></div>`,'wide'); }
   function inspectWall(){
-    if(!hasClue('duty_fragment')){addClue('duty_fragment');addItem('duty');openProp('duty','墙缝里的值日表残页');}
-    else openProp('duty','值日表残页');
+    const fresh=!hasClue('duty_fragment'); if(fresh){addClue('duty_fragment');addItem('duty');}
+    openCustom('307 · 墙角',`<img class="prop-img" src="assets/img/classroom_wall.jpg" alt="307墙角近景"><div class="paper"><h3>墙缝里的纸</h3><p>${fresh?'旧墙皮后夹着半张已经发脆的值日表。':'值日表残页仍夹在这里。'}其中一行只能看清：<b>“周二：韩凯 / 林□”</b>。</p><img class="prop-img" src="assets/img/duty.jpg" alt="值日表残页"></div>`,'wide');
   }
   function inspectAlbum(){ if(addClue('photo_alias')) openText('摄影社照片背面','一张2008年春天的社团活动照背后写着：<br><br><b>“阿遥第一次自己冲照片，差点把整卷都曝光了。”</b>'); else toast('“阿遥”这个称呼并不是你猜出来的，它确实存在于当年的照片背面。') }
   function inspectLedger(){ if(addClue('temp071')) openText('器材借用登记','2008年2月至5月，多次出现同一个借用编号：<b>TEMP-071</b>。<br>姓名栏没有正式学号，只写“临时成员”。'); else toast('TEMP-071在摄影社登记里出现了很多次。') }
@@ -162,22 +177,29 @@
   function enterRooftop(){if(!hasClue('final_film'))return toast('你还无法确定当年究竟谁在现场。先把找到的胶卷冲洗出来。');state.flags.rooftopOpen=true;save();go('rooftop');}
   function inspectFullPhoto(){
     if(!hasClue('final_film')) return toast('没有事故当天的照片，你无法判断这张合影到底被裁掉了什么。');
-    if(addClue('full_photo')) openText('照片最右侧','完整底片比“毕业照”更宽。最右侧还站着周老师。<br><br>所以照片里不是41名毕业生，而是<b>40名正式学生 + 林遥 + 班主任</b>。<br><br>它从来不是正式毕业照，只是一张2008年春天的班级合影。');
+    if(addClue('full_photo')) openText('照片最右侧','完整底片比“毕业照”更宽。最右侧还站着周老师。<br><br>所以它并不是一张严格意义上的“毕业照”：画面里既有正式毕业名册中的学生，也有林遥和班主任。<br><br>它只是2008年春天的一次班级活动合影，后来被错误归档成了毕业照。');
     else toast('真正异常的不是照片人数，而是十八年后竟没人能说清其中一个人的名字。');
   }
 
   function openCompare(){
-    if(!hasItem('class_photo'))return toast('你手里还没有可对照的旧照片。');
-    openCustom('照片对照 · 307教室',`<div class="compare-workspace" id="compareSpace"><img src="${resolve(scenes.classroom.img)}" class="compare-bg"><img src="assets/img/class_photo.jpg" id="dragPhoto" class="compare-photo" alt="旧合影"></div><div class="compare-tools"><span>透明度</span><input id="opacityRange" type="range" min="20" max="85" value="54"><button id="lockCompare">固定对照</button></div><div class="compare-result">没有高亮区域。自己拖动、缩放观察窗框、黑板与课桌位置。</div>`,'wide');
+    if(!hasItem('class_photo'))return toast('你还没有拿到牛皮纸袋里的照片资料。');
+    openCustom('照片对照 · 307教室',`<div class="compare-workspace" id="compareSpace"><img src="${resolve(scenes.classroom.img)}" class="compare-bg" alt="2026年的307教室"><img src="assets/img/classroom_snapshot.jpg" id="dragPhoto" class="compare-photo" alt="2008年教室快照"></div><div class="compare-tools"><span>透明度</span><input id="opacityRange" type="range" min="20" max="85" value="54"><span>缩放</span><input id="scaleRange" type="range" min="55" max="135" value="78"><span>旋转</span><input id="rotateRange" type="range" min="-10" max="10" value="0"><button id="resetCompare">复位</button><button id="lockCompare">固定对照</button></div><div class="compare-result">热点没有高亮。请自己拖动照片，并用缩放、旋转把黑板和前排桌沿大致对应起来。</div>`,'wide');
     setTimeout(()=>{
-      const p=$('#dragPhoto'), range=$('#opacityRange'); if(!p)return;
-      range.addEventListener('input',()=>p.style.opacity=range.value/100);
-      let drag=false,sx=0,sy=0,sl=0,st=0;
-      const down=e=>{drag=true;p.classList.add('drag');sx=e.clientX;sy=e.clientY;sl=p.offsetLeft;st=p.offsetTop;p.setPointerCapture?.(e.pointerId);e.preventDefault();};
+      const p=$('#dragPhoto'), opacity=$('#opacityRange'), scale=$('#scaleRange'), rotate=$('#rotateRange'), result=$('.compare-result'); if(!p)return;
+      let drag=false,sx=0,sy=0,sl=0,st=0,touched=false;
+      const transform=()=>{p.style.transform=`scale(${(+scale.value)/100}) rotate(${+rotate.value}deg)`;};
+      opacity.addEventListener('input',()=>{p.style.opacity=opacity.value/100;touched=true;});
+      scale.addEventListener('input',()=>{transform();touched=true;}); rotate.addEventListener('input',()=>{transform();touched=true;}); transform();
+      const down=e=>{drag=true;touched=true;p.classList.add('drag');sx=e.clientX;sy=e.clientY;sl=p.offsetLeft;st=p.offsetTop;p.setPointerCapture?.(e.pointerId);e.preventDefault();};
       const move=e=>{if(!drag)return;p.style.left=(sl+e.clientX-sx)+'px';p.style.top=(st+e.clientY-sy)+'px';};
       const up=e=>{drag=false;p.classList.remove('drag');try{p.releasePointerCapture?.(e.pointerId)}catch(_){}};
       p.addEventListener('pointerdown',down);p.addEventListener('pointermove',move);p.addEventListener('pointerup',up);p.addEventListener('pointercancel',up);
-      $('#lockCompare').addEventListener('click',()=>{addClue('extra_desk'); $('.compare-result').innerHTML='你把窗框和黑板大致对齐后发现：<b>2008年的靠窗区域比现在多一张学生桌。</b> 桌子后来被搬走了。';});
+      $('#resetCompare').addEventListener('click',()=>{p.style.left='21%';p.style.top='14%';opacity.value=54;scale.value=78;rotate.value=0;p.style.opacity=.54;transform();touched=true;});
+      $('#lockCompare').addEventListener('click',()=>{
+        if(!touched){result.textContent='先实际移动、缩放或旋转这张旧快照。只按“固定对照”不会直接得到答案。';return;}
+        const fresh=addClue('extra_desk');
+        result.innerHTML=fresh?'你把黑板边缘和前排桌沿大致对应后发现：<b>2008年靠窗一侧比现在多一张学生桌。</b> 那张桌后来被单独搬走了。':'你已经确认过：2008年的靠窗区域比现在多一张课桌。';
+      });
     },0);
   }
 
@@ -249,14 +271,14 @@
     return true;
   }
   function openMap(){ if(!hasItem('map'))return toast('你还没有拿到旧校区地图。'); const loc=[['gate','校门'],['guard','门卫室'],['hallway','三楼走廊'],['classroom','307教室'],['photo','摄影社'],['darkroom','暗房'],['broadcast','广播室'],['sports','器材室'],['oldbuilding','旧实验楼'],['rooftop','天台']]; let bs=loc.map(([id,n])=>`<button data-loc="${id}" ${canMapTo(id)?'':'disabled'}>${n}</button>`).join('');openCustom('旧校区平面图',`<div class="map-wrap"><img src="assets/img/map.jpg" alt="旧校区地图"><div class="location-buttons">${bs}</div></div>`,'wide');setTimeout(()=>document.querySelectorAll('[data-loc]').forEach(b=>b.onclick=()=>{if(b.disabled)return;closeModal();go(b.dataset.loc)}),0); }
-  function openPhoto(){ if(!hasItem('class_photo'))return toast('你还没有拿到那张旧合影。'); openProp('class_photo',hasClue('full_photo')?'完整的2008年春季合影':'2008年旧合影'); }
+  function openPhoto(){ if(!hasItem('class_photo'))return toast('你还没有拿到那张旧合影。'); openClassPhoto(); }
   function openHint(){
     const key=state.scene; state.hintLevel[key]=(state.hintLevel[key]||0)+1; const l=Math.min(3,state.hintLevel[key]); save();
     const hints={
       gate:['门边有个旧报箱。','报箱里塞着一个牛皮纸袋。','先点击画面左下方的报箱区域。'],
       guard:['你需要能进入307的东西，也需要知道旧楼怎么走。','桌面地图和左侧钥匙板都值得检查。','先拿地图，再点击左上方钥匙板。'],
       hallway:[nextObjective(),nextObjective(),nextObjective()],
-      classroom:['照片里的背景比人物更重要。','试着把旧合影举到教室画面上。','点击黑板右侧的合影拍摄位置打开照片对照，拖动后点“固定对照”。'],
+      classroom:['照片本身未必能直接对应现场，纸袋里可能还有同一天的教室快照。','去307右侧的照片对照位置，把2008教室快照与现在的教室叠在一起。','拖动照片，并用缩放/旋转把黑板和课桌大致对齐，再固定对照。'],
       photo:['071不是正式学号，摄影社可能把临时成员写在别的册子里。','分别检查旧相册和借用登记册。','拿到“阿遥”“TEMP-071”“林□”三条信息即可拼出姓名。'],
       darkroom:[hasItem('negative')?'桌上的放大机可以冲洗你找到的胶卷。':'这里先找旧底片；真正需要显影的胶卷在别处。',hasItem('negative')?'点击中央显影台。':'器材室里有一张从307搬走的旧桌子。',hasItem('negative')?'曝光在3～8秒都能成功。':'去器材室检查旧桌抽屉。'],
       broadcast:['找5月19日那盘午间广播。','磁带机A里能恢复关键时间。','点击中央偏左的磁带机A。'],
@@ -277,7 +299,12 @@
 
   function updateHUD(){clueCount.textContent=state.clues.length; $('#continueBtn')?.classList.toggle('hidden',!state.started);}
   function openTitle(){closeModal();gameScreen.classList.remove('active');titleScreen.classList.add('active');updateHUD();}
-  function startGame(fresh=false){if(fresh){state=defaultState();}state.started=true;if(!state.startedAt)state.startedAt=Date.now();save();titleScreen.classList.remove('active');gameScreen.classList.add('active');renderScene();}
+  function openPrologue(){
+    if(state.flags.introSeen)return;
+    openCustom('',`<div class="phone"><div class="time">2026 / 08 / 18　19:37</div><div class="dialogue"><p>陈嘉树在电话里说，老校区明早就要拆。他白天整理校史材料时看见一张2008年的旧合影：正式毕业名册只有40人，却有一个女生怎么也对不上姓名。</p><p>他约你晚上到307见面，可你赶到学校时，门卫室没有任何校友入校记录。</p><p><b>19:43，你站在旧校门外。门边报箱里露出一个牛皮纸袋。</b></p></div><div class="phone-choices"><button id="introGo">进去看看</button></div></div>`,'narrow',false);
+    setTimeout(()=>$('#introGo')?.addEventListener('click',()=>{state.flags.introSeen=true;save();closeModal();}),0);
+  }
+  function startGame(fresh=false){if(fresh){state=defaultState();}state.started=true;if(!state.startedAt)state.startedAt=Date.now();save();titleScreen.classList.remove('active');gameScreen.classList.add('active');renderScene();if(!state.flags.introSeen)openPrologue();}
 
   // lightweight procedural sound; no external audio assets
   let audioCtx=null; function ctx(){if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();return audioCtx}
